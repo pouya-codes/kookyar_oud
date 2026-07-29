@@ -1,4 +1,4 @@
-package com.PouyaApp.kookyaroud;
+package com.PouyaApp.kookyaroud_v2;
 
 import com.kookyar.common.PersianReshape;
 
@@ -13,7 +13,7 @@ import android.app.Activity;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.widget.TextView;
-import com.PouyaApp.kookyaroud.R;
+import com.PouyaApp.kookyaroud_v2.R;
 
 public class About extends Activity {
 	public String fonts="BZar.ttf";

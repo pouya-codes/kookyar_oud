@@ -16,11 +16,11 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace 'com.PouyaApp.kookyaroud'
+    namespace 'com.PouyaApp.kookyaroud_v2'
     compileSdk 35
     
     defaultConfig {
-        applicationId 'com.PouyaApp.kookyaroud'
+        applicationId 'com.PouyaApp.kookyaroud_v2'
         minSdk 21
         targetSdk 35
         versionName '2.0.0'

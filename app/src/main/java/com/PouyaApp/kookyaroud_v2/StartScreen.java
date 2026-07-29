@@ -1,4 +1,4 @@
-package com.PouyaApp.kookyaroud;
+package com.PouyaApp.kookyaroud_v2;
 
 import android.content.Intent;
 import android.content.pm.PackageInfo;

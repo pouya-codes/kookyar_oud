@@ -1,7 +1,8 @@
-package com.PouyaApp.kookyaroud;
+package com.PouyaApp.kookyaroud_v2;
 
 import com.kookyar.common.PersianReshape;
 import com.kookyar.common.PitchView;
+import com.kookyar.common.TunerPitchCoordinator;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,7 +51,7 @@ import androidx.core.content.ContextCompat;
 
 import com.google.android.material.materialswitch.MaterialSwitch;
 
-import com.PouyaApp.kookyaroud.R;
+import com.PouyaApp.kookyaroud_v2.R;
 import com.daimajia.androidanimations.library.Techniques;
 import com.daimajia.androidanimations.library.YoYo;
 
@@ -82,11 +83,9 @@ public class GitarTuner extends AppCompatActivity implements OnClickListener, On
 	private double nimpardehSub = 0;
 	private int selectedStringIndex = -1;
 	private int lastTunedIndex = -1;
-	Thread t;
-	private boolean threadRuned = false;
-	private boolean threadRuned2 = false;
+	private final TunerPitchCoordinator pitchCoordinator = new TunerPitchCoordinator();
 
-	private double[] Miditone = {60, 55, 50, 45, 43, 38};
+	private double[] Miditone = {64, 59, 55, 50, 45, 40};
 
 	private PdService pdService = null;
 	@Override
@@ -223,6 +222,7 @@ public class GitarTuner extends AppCompatActivity implements OnClickListener, On
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
+		pitchCoordinator.destroy();
 		unbindService(pdConnection);
 	}
 
@@ -339,6 +339,11 @@ public class GitarTuner extends AppCompatActivity implements OnClickListener, On
 		int sampleRate = AudioParameters.suggestSampleRate();
 		pdService.initAudio(sampleRate, 1, 2, 20.0f);
 		start();
+		pitchCoordinator.setAudioStarter(() -> {
+			if (pdService != null && !pdService.isRunning()) {
+				pdService.startAudio();
+			}
+		});
 
 		// Create and install the dispatcher
 		dispatcher = new PdUiDispatcher();
@@ -348,45 +353,22 @@ public class GitarTuner extends AppCompatActivity implements OnClickListener, On
 			@Override
 			public void receiveFloat(String source, final float x) {
 
-				if (pressure >= sensitiveLevel) {
-					if(threadRuned){
-						threadRuned2=false;
-					}
-					float pitch = (float) Math.round(x * 1000) / 1000;
-					pitchView.setCurrentPitch(pitch);
-
-					if (tuning.isChecked()) {
-						for (int i = 0; i < Miditone.length; i++) {
-							double target = Miditone[i] - nimpardehSub;
-							if (pitch >= target - 0.4 && pitch <= target + 0.4) {
-								autoTune(i);
-								break;
-							}
-						}
-					}
-
-					if (t == null || (pitchView.getCenterPitch() != 12 && !threadRuned)) {
-						t = new Thread(new Thread() {
-
-							@Override
-							public void run() {
-								threadRuned = true;
-								threadRuned2 = true;
-								try {
-									Log.d(TAG, "run: " + Thread.currentThread());
-									sleep(2500);
-									Log.d(TAG, "stop: " + Thread.currentThread());
-									if (threadRuned2) {
-										pitchView.setCurrentPitch(12);
+				if (pressure >= sensitiveLevel && pitchView.getCenterPitch() > 0) {
+					final float pitch = (float) Math.round(x * 1000) / 1000;
+					pitchCoordinator.onPitchInput(
+							() -> {
+								pitchView.setCurrentPitch(pitch);
+								if (tuning.isChecked()) {
+									for (int i = 0; i < Miditone.length; i++) {
+										double target = Miditone[i] - nimpardehSub;
+										if (pitch >= target - 0.4 && pitch <= target + 0.4) {
+											autoTune(i);
+											break;
+										}
 									}
-									threadRuned = false;
-								} catch (InterruptedException e) {
-									e.printStackTrace();
 								}
-							}
-						});
-						t.start();
-					}
+							},
+							() -> pitchView.setCurrentPitch(12));
 				}
 			}
 		});
@@ -419,13 +401,19 @@ public class GitarTuner extends AppCompatActivity implements OnClickListener, On
 
 	private void triggerNote(float triggeredNote) {
 		float realMidi = midiToRealMidi(triggeredNote);
+		pitchCoordinator.invalidatePitchReset();
 		pitchView.setCenterPitch(realMidi);
+		pitchView.setCurrentPitch(12);
 		pitchView.setMidiRef(triggeredNote);
-		PdBase.sendFloat("midinote", realMidi);
-		PdBase.sendBang("trigger");
+		final float midiForPd = realMidi;
+		pitchCoordinator.scheduleTrigger(() -> TunerPitchCoordinator.runPdSend(() -> {
+			PdBase.sendFloat("midinote", midiForPd);
+			PdBase.sendBang("trigger");
+		}));
 	}
 
 	private void triggerNote2(float triggeredNote) {
+		pitchCoordinator.invalidatePitchReset();
 		float realMidi = midiToRealMidi(triggeredNote);
 		pitchView.setCenterPitch(realMidi);
 		pitchView.setMidiRef(triggeredNote);
@@ -471,7 +459,7 @@ public class GitarTuner extends AppCompatActivity implements OnClickListener, On
 		lastTunedIndex = i;
 		selectedStringIndex = i;
 		int[] imgs = {R.drawable.gitar1, R.drawable.gitar2, R.drawable.gitar3, R.drawable.gitar4, R.drawable.gitar5, R.drawable.gitar6};
-		String[] labels = {"سیم یک و دو", "سیم سه و چهار", "سیم پنج و شش", "سیم هفت و هشت", "سیم نه و ده", "سیم یازده"};
+		String[] labels = {"سیم اول", "سیم دوم", "سیم سوم", "سیم چهارم", "سیم پنجم", "سیم ششم"};
 		triggerNote2((float) (Miditone[i] - nimpardehSub));
 		pitchLabel.setText(PersianReshape.reshape(labels[i]));
 		ivTar.setBackgroundResource(imgs[i]);
@@ -485,17 +473,17 @@ public class GitarTuner extends AppCompatActivity implements OnClickListener, On
 		if (viewId == R.id.tuning) {
 			tuning.setChecked(!tuning.isChecked());
 		} else if (viewId == R.id.tar_1) {
-			selectString(0, R.drawable.gitar1, "سیم یک و دو");
+			selectString(0, R.drawable.gitar1, "سیم اول");
 		} else if (viewId == R.id.tar_2) {
-			selectString(1, R.drawable.gitar2, "سیم سه و چهار");
+			selectString(1, R.drawable.gitar2, "سیم دوم");
 		} else if (viewId == R.id.tar_3) {
-			selectString(2, R.drawable.gitar3, "سیم پنج و شش");
+			selectString(2, R.drawable.gitar3, "سیم سوم");
 		} else if (viewId == R.id.tar_4) {
-			selectString(3, R.drawable.gitar4, "سیم هفت و هشت");
+			selectString(3, R.drawable.gitar4, "سیم چهارم");
 		} else if (viewId == R.id.tar_5) {
-			selectString(4, R.drawable.gitar5, "سیم نه و ده");
+			selectString(4, R.drawable.gitar5, "سیم پنجم");
 		} else if (viewId == R.id.tar_6) {
-			selectString(5, R.drawable.gitar6, "سیم یازده");
+			selectString(5, R.drawable.gitar6, "سیم ششم");
 		}
 	}
 

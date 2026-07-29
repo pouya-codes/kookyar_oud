@@ -1,4 +1,4 @@
-package com.PouyaApp.kookyaroud;
+package com.PouyaApp.kookyaroud_v2;
 
 import com.kookyar.common.PersianReshape;
 
@@ -11,19 +11,20 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
-import com.PouyaApp.kookyaroud.R;
+import com.PouyaApp.kookyaroud_v2.R;
 
-public class TunerHelp extends Activity {
+public class Help extends Activity {
 	public String fonts="BZar.ttf";
-
+	private TextView help ;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_tuner_help);
+		setContentView(R.layout.activity_help);
 		Typeface face = Typeface.createFromAsset(getAssets(), "font/"+fonts+"");
-		TextView help = (TextView) findViewById(R.id.tunerHelp) ;
+		help = (TextView) findViewById(R.id.helpTV) ;
 		help.setTypeface(face);
 		String str_tv = (String) help.getText().toString();
 		help.setText(PersianReshape.reshape(str_tv));
+
 	}
 }
