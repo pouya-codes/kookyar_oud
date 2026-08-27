@@ -13,7 +13,7 @@ android {
     compileSdk 37
 
     defaultConfig {
-        applicationId 'com.PouyaApp.kookyaroud_v2'
+        applicationId 'com.tuningApps.oudTuner'
         minSdk 21
         targetSdk 37
         versionName '2.1.0'
